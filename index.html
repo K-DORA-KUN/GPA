@@ -180,23 +180,6 @@
             localStorage.setItem('gpaData', JSON.stringify(semestersData));
         }
 
-        function loadData() {
-            const savedData = localStorage.getItem('gpaData');
-            if (savedData) {
-                semestersData = JSON.parse(savedData);
-            } else {
-                semestersData = [
-                    {
-                        name: "Học kỳ 1",
-                        courses: [
-                            { code: "COMP1010", name: "Lập trình cơ bản", credits: 3, components: [{ name: "Điểm thi giữa học phần", weight: 50, score: 5.6 }, { name: "Điểm thi kết thúc học phần", weight: 50, score: 4.5 }] },
-                            { code: "COMP1600", name: "Cơ sở toán trong CNTT", credits: 4, components: [{ name: "Điểm quá trình", weight: 40, score: 9.5 }, { name: "Điểm thi kết thúc học phần", weight: 60, score: 7.0 }] }
-                        ]
-                    }
-                ];
-            }
-        }
-
         // --- CÁC HÀM TÍNH TOÁN ---
         function convertScore(score10) {
             if (score10 === null || isNaN(score10)) return { score4: 0, letter: 'N/A', passed: false, color: 'text-gray-500' };
@@ -820,4 +803,5 @@ function getGradeClassification(gpa) {
 
     </script>
 </body>
+
 </html>
