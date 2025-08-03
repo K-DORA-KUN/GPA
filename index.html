@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Công Cụ Smart_GPA</title>
+    <title>Công cụ Smart_GPA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Thêm thư viện SheetJS để xuất Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -130,6 +129,25 @@
         .modal-overlay.visible .modal-content {
             transform: scale(1);
         }
+        /* Style for buttons in the action panel */
+        .remove-btn {
+            background-color: #fee2e2; /* red-100 */
+            color: #b91c1c; /* red-800 */
+            border: 1px solid #fecaca; /* red-200 */
+        }
+        .remove-btn:hover {
+            background-color: #fca5a5; /* red-300 */
+            border-color: #f87171; /* red-400 */
+        }
+        .secondary-btn {
+            background-color: #e0f2fe; /* sky-100 */
+            color: #075985; /* sky-800 */
+            border: 1px solid #bae6fd; /* sky-200 */
+        }
+        .secondary-btn:hover {
+            background-color: #7dd3fc; /* sky-300 */
+            border-color: #38bdf8; /* sky-400 */
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -137,7 +155,7 @@
     <div class="max-w-7xl mx-auto bg-container-bg rounded-xl shadow-lg p-6 md:p-8 fade-in">
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 via-teal-500 to-sky-500">
-                Bảng Điểm GPA Thông Minh
+                Bảng Điểm Smart_GPA
             </h1>
             <p class="text-gray-500 mt-2 text-lg">Quản lý, tính toán và dự đoán kết quả học tập</p>
         </header>
@@ -150,7 +168,6 @@
                 <i class="fas fa-plus"></i>
                 <span>Thêm Học Kỳ</span>
             </button>
-            <!-- Nút Xuất Excel mới -->
             <button id="export-excel-btn" class="action-btn btn-primary bg-green-600 hover:bg-green-700">
                 <i class="fas fa-file-excel"></i>
                 <span>Xuất Excel</span>
@@ -172,23 +189,56 @@
         </div>
     </div>
 
+    <div class="max-w-7xl mx-auto mt-6">
+        <div class="bg-white p-6 rounded-xl shadow-lg transition-all duration-300">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Tác vụ</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button id="save-data-btn" class="action-btn secondary-btn w-full justify-center">
+                    <i class="fas fa-save"></i>
+                    <span>Lưu Dữ Liệu</span>
+                </button>
+                <button id="reset-data-btn" class="action-btn remove-btn w-full justify-center">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>Đặt Lại Toàn Bộ</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // --- DỮ LIỆU & LƯU TRỮ ---
+        // --- DATA & STORAGE ---
         let semestersData = [];
 
         function saveData() {
             localStorage.setItem('gpaData', JSON.stringify(semestersData));
+            // Show a confirmation modal
+            showModal('Đã Lưu Thành Công!', 'Dữ liệu của bạn đã được lưu vào trình duyệt.', null);
         }
 
-        // --- CÁC HÀM TÍNH TOÁN ---
+        function loadData() {
+            const savedData = localStorage.getItem('gpaData');
+            if (savedData) {
+                semestersData = JSON.parse(savedData);
+            }
+        }
+        
+        function resetData() {
+            showModal('Đặt Lại Dữ Liệu?', 'Bạn có chắc chắn muốn xóa tất cả dữ liệu? Hành động này không thể hoàn tác.', () => {
+                semestersData = [];
+                localStorage.removeItem('gpaData');
+                rerenderAll();
+            });
+        }
+
+        // --- CALCULATION FUNCTIONS ---
         function convertScore(score10) {
             if (score10 === null || isNaN(score10)) return { score4: 0, letter: 'N/A', passed: false, color: 'text-gray-500' };
             if (score10 >= 8.5) return { score4: 4.0, letter: 'A', passed: true, color: 'text-green-500' };
-            if (score10 >= 8.0) return { score4: 3.5, letter: 'B+', passed: true, color: 'text-green-500' };
+            if (score10 >= 7.8) return { score4: 3.5, letter: 'B+', passed: true, color: 'text-green-500' };
             if (score10 >= 7.0) return { score4: 3.0, letter: 'B', passed: true, color: 'text-sky-500' };
-            if (score10 >= 6.5) return { score4: 2.5, letter: 'C+', passed: true, color: 'text-sky-500' };
+            if (score10 >= 6.3) return { score4: 2.5, letter: 'C+', passed: true, color: 'text-sky-500' };
             if (score10 >= 5.5) return { score4: 2.0, letter: 'C', passed: true, color: 'text-yellow-500' };
-            if (score10 >= 5.0) return { score4: 1.5, letter: 'D+', passed: true, color: 'text-yellow-500' };
+            if (score10 >= 4.8) return { score4: 1.5, letter: 'D+', passed: true, color: 'text-yellow-500' };
             if (score10 >= 4.0) return { score4: 1.0, letter: 'D', passed: true, color: 'text-orange-500' };
             return { score4: 0.0, letter: 'F', passed: false, color: 'text-red-500' };
         }
@@ -249,10 +299,11 @@
             return { totalCreditsRegistered, totalCreditsAccumulated, cumulativeGpa };
         }
 
-        // --- CÁC HÀM HIỂN THỊ (RENDER) ---
+        // --- RENDER FUNCTIONS ---
         const semestersContainer = document.getElementById('semesters-container');
         const summaryContainer = document.getElementById('summary-container');
         
+        // This function re-builds everything. Use only when necessary (e.g., deleting items).
         function rerenderAll() {
             const summary = calculateAll();
             semestersContainer.innerHTML = '';
@@ -260,10 +311,10 @@
                 semestersContainer.appendChild(createSemesterElement(semester, semesterIndex));
             });
             summaryContainer.innerHTML = createSummaryElement(summary);
-            addEventListeners(); // Gọi lại để đảm bảo các sự kiện được gắn lại sau khi render
-            saveData();
         }
         
+        // This function updates only calculated values, preserving the page structure.
+        // It's faster and avoids the "jerking" effect.
         function updateUI() {
             const summary = calculateAll();
             summaryContainer.innerHTML = createSummaryElement(summary);
@@ -292,7 +343,7 @@
                             mainRow.cells[6].innerHTML = resultIcon;
 
                             const detailsRow = mainRow.nextElementSibling;
-                             if(detailsRow){
+                             if(detailsRow && detailsRow.classList.contains('details-row')){
                                  const weightWarning = course.totalWeight !== 100 ? `<i class="fas fa-exclamation-triangle text-yellow-500 ml-2" title="Tổng trọng số khác 100%"></i>` : '';
                                  const weightSpan = detailsRow.querySelector('.total-weight-display');
                                  if (weightSpan) {
@@ -303,7 +354,6 @@
                     });
                 }
             });
-            saveData();
         }
 
         function createSemesterElement(semester, semesterIndex) {
@@ -387,7 +437,7 @@
                 <tr class="group" data-comp-index="${compIndex}">
                     <td class="p-2 w-2/3"><input type="text" value="${comp.name}" class="comp-data-input w-full p-1 rounded bg-white" data-field="name" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${compIndex}"></td>
                     <td class="p-2"><input type="number" value="${comp.weight}" placeholder="%" min="0" max="100" class="comp-data-input w-full p-1 rounded text-center bg-white" data-field="weight" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${compIndex}"></td>
-                    <td class="p-2"><input type="number" value="${comp.score}" placeholder="Điểm" min="0" max="10" step="0.1" class="comp-data-input w-full p-1 rounded text-center bg-white" data-field="score" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${compIndex}"></td>
+                    <td class="p-2"><input type="number" value="${comp.score || ''}" placeholder="Điểm" min="0" max="10" step="0.1" class="comp-data-input w-full p-1 rounded text-center bg-white" data-field="score" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${compIndex}"></td>
                     <td class="p-2 text-center w-12"><button class="icon-btn delete remove-component-btn opacity-50 group-hover:opacity-100" title="Xóa thành phần" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${compIndex}"><i class="fas fa-minus-circle"></i></button></td>
                 </tr>`;
         }
@@ -414,7 +464,7 @@
             `;
         }
 
-        // --- MODAL & SỰ KIỆN ---
+        // --- MODAL & EVENTS ---
         const modal = document.getElementById('custom-modal');
         const modalTitle = document.getElementById('modal-title');
         const modalMessage = document.getElementById('modal-message');
@@ -426,6 +476,8 @@
             modalTitle.textContent = title;
             modalMessage.textContent = message;
             confirmCallback = onConfirm;
+            modalConfirmBtn.style.display = onConfirm ? 'inline-flex' : 'none';
+            modalCancelBtn.textContent = onConfirm ? 'Hủy bỏ' : 'Đóng';
             modal.classList.add('visible');
         }
 
@@ -443,259 +495,134 @@
         modalCancelBtn.onclick = hideModal;
         modal.onclick = (e) => { if (e.target === modal) hideModal(); };
 
-        function addEventListeners() {
-            // Sự kiện chỉ cần gắn một lần bằng event delegation
-            // (Hàm này có thể trống vì chúng ta dùng event delegation trên document.body)
-        }
-        
-        // --- CÁC HÀM XUẤT DỮ LIỆU ---
-function exportToExcel() {
-    if (semestersData.length === 0) {
-        showModal('Không có dữ liệu', 'Không có dữ liệu học kỳ nào để xuất ra Excel.', () => {});
-        return;
-    }
-
-    const workbook = XLSX.utils.book_new();
-    const date = new Date().toLocaleDateString('vi-VN');
-    const time = new Date().toLocaleTimeString('vi-VN');
-
-    // Tạo sheet thông tin chung
-    const infoData = [
-        ["BẢNG ĐIỂM GPA", "", "", "", "", "", ""],
-        ["Người dùng:", "Học sinh/Sinh viên", "", "", "", "", ""],
-        ["Ngày xuất:", date, "Lúc:", time, "", "", ""],
-        ["", "", "", "", "", "", ""],
-        ["TỔNG HỢP", "", "", "", "", "", ""],
-        ["Tổng số học kỳ:", semestersData.length, "", "", "", "", ""],
-        ["Tổng số môn học:", semestersData.reduce((sum, semester) => sum + semester.courses.length, 0), "", "", "", "", ""],
-        ["Tổng số tín chỉ đăng ký:", calculateAll().totalCreditsRegistered, "", "", "", "", ""],
-        ["Tổng số tín chỉ tích lũy:", calculateAll().totalCreditsAccumulated, "", "", "", "", ""],
-        ["GPA tích lũy:", calculateAll().cumulativeGpa.toFixed(3), "Xếp loại:", getGradeClassification(calculateAll().cumulativeGpa), "", "", ""],
-        ["", "", "", "", "", "", ""],
-        ["Ghi chú:", "", "", "", "", "", ""],
-        ["- Điểm số được tính theo thang điểm 10", "", "", "", "", "", ""],
-        ["- GPA được tính theo thang điểm 4", "", "", "", "", "", ""],
-        ["- Tổng trọng số các thành phần điểm phải bằng 100%", "", "", "", "", "", ""]
-    ];
-    
-    const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
-    XLSX.utils.book_append_sheet(workbook, wsInfo, "Thông tin");
-
-    // Tạo sheet cho từng học kỳ
-    semestersData.forEach((semester, semesterIdx) => {
-        const semesterName = semester.name || `Học kỳ ${semesterIdx + 1}`;
-        const data = [];
-
-        // Tiêu đề học kỳ
-        data.push([semesterName.toUpperCase(), "", "", "", "", "", ""]);
-        data.push(["", "", "", "", "", "", ""]);
-
-        // Header cho bảng môn học
-        data.push(["STT", "Mã môn", "Tên môn học", "Số TC", "Điểm H10", "Điểm Chữ", "Kết Quả"]);
-
-        semester.courses.forEach((course, courseIdx) => {
-            const score10Display = course.score10 !== null ? course.score10.toFixed(2) : '—';
-            const result = course.score10 !== null ? (course.passed ? 'Đạt' : 'Trượt') : '—';
-            
-            // Thêm dữ liệu môn học
-            data.push([
-                courseIdx + 1,
-                course.code,
-                course.name,
-                course.credits,
-                { v: course.score10, t: 'n', z: course.score10 !== null ? '0.00' : '@' },
-                course.letter,
-                result
-            ]);
-
-            // Thêm chi tiết điểm
-            if (course.components && course.components.length > 0) {
-                data.push(["", "", "Thành phần điểm", "Trọng số (%)", "Điểm", "Ghi chú", ""]);
-                
-                course.components.forEach(comp => {
-                    data.push([
-                        "", 
-                        "", 
-                        comp.name, 
-                        { v: comp.weight, t: 'n', z: '0' },
-                        { v: comp.score, t: 'n', z: comp.score !== null ? '0.0' : '@' },
-                        "", 
-                        ""
-                    ]);
-                });
-                
-                // Thêm dòng tổng trọng số
-                const weightStatus = course.totalWeight === 100 ? "✓ Đạt" : "⚠ Chưa đạt (Tổng: " + course.totalWeight + "%)";
-                data.push([
-                    "", 
-                    "", 
-                    "Tổng trọng số:", 
-                    course.totalWeight + "%", 
-                    "", 
-                    weightStatus, 
-                    ""
-                ]);
-                
-                // Thêm dòng điểm tổng kết
-                data.push([
-                    "", 
-                    "", 
-                    "Điểm tổng kết:", 
-                    "", 
-                    score10Display, 
-                    course.letter + " (" + convertScore(course.score10).score4.toFixed(2) + "/4.0)", 
-                    ""
-                ]);
-                
-                data.push(["", "", "", "", "", "", ""]); // Dòng trống
-            }
-        });
-
-        // Thêm tóm tắt học kỳ
-        data.push(["", "", "TÓM TẮT HỌC KỲ", "", "", "", ""]);
-        data.push(["", "", "Tín chỉ đăng ký:", semester.creditsRegistered, "", "", ""]);
-        data.push(["", "", "Tín chỉ đạt:", semester.creditsEarned, "", "", ""]);
-        data.push(["", "", "GPA học kỳ:", { v: semester.gpa, t: 'n', z: '0.00' }, "", "", ""]);
-        data.push(["", "", "Xếp loại:", getGradeClassification(semester.gpa), "", "", ""]);
-        data.push(["", "", "", "", "", "", ""]); // Dòng trống
-
-        // Định dạng cột
-        const colWidths = [
-            { wch: 5 },  // STT
-            { wch: 12 }, // Mã môn
-            { wch: 30 }, // Tên môn
-            { wch: 8 },  // Số TC
-            { wch: 10 }, // Điểm H10
-            { wch: 15 }, // Điểm chữ
-            { wch: 10 }  // Kết quả
-        ];
-
-        const ws = XLSX.utils.aoa_to_sheet(data);
-        ws['!cols'] = colWidths;
-        
-        // Thêm định dạng điều kiện cho điểm
-        if (semester.courses.some(c => c.score10 !== null)) {
-            ws['!conditionalFormats'] = [
-                {
-                    ref: `E4:E${3 + semester.courses.length}`,
-                    rules: [
-                        { type: 'cell', op: 'lte', val: 4, color: { rgb: 'FF0000' } }, // Đỏ cho điểm <= 4
-                        { type: 'cell', op: 'between', val: [4, 5.5], color: { rgb: 'FFA500' } }, // Cam cho 4-5.5
-                        { type: 'cell', op: 'between', val: [5.5, 7], color: { rgb: 'FFFF00' } }, // Vàng cho 5.5-7
-                        { type: 'cell', op: 'between', val: [7, 8.5], color: { rgb: '90EE90' } }, // Xanh nhạt cho 7-8.5
-                        { type: 'cell', op: 'gte', val: 8.5, color: { rgb: '008000' } } // Xanh đậm cho >=8.5
-                    ]
-                }
-            ];
-        }
-
-        XLSX.utils.book_append_sheet(workbook, ws, semesterName.substring(0, 31));
-    });
-
-    // Thêm sheet tổng kết toàn khóa
-    const summary = calculateAll();
-    const summaryData = [
-        ["TỔNG KẾT TOÀN KHÓA"],
-        ["", "", "", "", "", "", ""],
-        ["Tổng số học kỳ:", semestersData.length, "", "", "", "", ""],
-        ["Tổng số môn học:", semestersData.reduce((sum, semester) => sum + semester.courses.length, 0), "", "", "", "", ""],
-        ["Tổng tín chỉ đăng ký:", summary.totalCreditsRegistered, "", "", "", "", ""],
-        ["Tổng tín chỉ tích lũy:", summary.totalCreditsAccumulated, "", "", "", "", ""],
-        ["GPA tích lũy:", { v: summary.cumulativeGpa, t: 'n', z: '0.000' }, "", "", "", "", ""],
-        ["Xếp loại:", getGradeClassification(summary.cumulativeGpa), "", "", "", "", ""],
-        ["", "", "", "", "", "", ""],
-        ["THANG ĐIỂM CHUẨN", "", "", "", "", "", ""],
-        ["Điểm H10", "Điểm chữ", "Điểm H4", "Đánh giá", "", "", ""],
-        ["9.0 - 10", "A", "4.0", "Xuất sắc", "", "", ""],
-        ["8.0 - 8.9", "B+", "3.5", "Giỏi", "", "", ""],
-        ["7.0 - 7.9", "B", "3.0", "Khá", "", "", ""],
-        ["6.5 - 6.9", "C+", "2.5", "Trung bình khá", "", "", ""],
-        ["5.5 - 6.4", "C", "2.0", "Trung bình", "", "", ""],
-        ["5.0 - 5.4", "D+", "1.5", "Trung bình yếu", "", "", ""],
-        ["4.0 - 4.9", "D", "1.0", "Yếu", "", "", ""],
-        ["0 - 3.9", "F", "0.0", "Trượt", "", "", ""]
-    ];
-    
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-    wsSummary['!cols'] = [
-        { wch: 20 }, // Cột 1
-        { wch: 10 }, // Cột 2
-        { wch: 10 }, // Cột 3
-        { wch: 20 }, // Cột 4
-        { wch: 5 },  // Cột 5
-        { wch: 5 },  // Cột 6
-        { wch: 5 }   // Cột 7
-    ];
-    
-    // Định dạng điều kiện cho bảng thang điểm
-    wsSummary['!conditionalFormats'] = [
-        {
-            ref: "A12:A19",
-            rules: [
-                { type: 'cell', op: 'between', val: [9, 10], color: { rgb: '008000' } }, // Xanh đậm
-                { type: 'cell', op: 'between', val: [8, 8.9], color: { rgb: '90EE90' } }, // Xanh nhạt
-                { type: 'cell', op: 'between', val: [7, 7.9], color: { rgb: 'FFFF00' } }, // Vàng
-                { type: 'cell', op: 'between', val: [6.5, 6.9], color: { rgb: 'FFA500' } }, // Cam
-                { type: 'cell', op: 'lte', val: 6.4, color: { rgb: 'FF0000' } } // Đỏ
-            ]
-        }
-    ];
-    
-    XLSX.utils.book_append_sheet(workbook, wsSummary, "Tổng Kết");
-
-    // Xuất file
-    const fileName = `Bảng điểm GPA - ${date.replace(/\//g, '-')}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-}
-
-function getGradeClassification(gpa) {
-    if (gpa >= 3.6) return "Xuất sắc";
-    if (gpa >= 3.2) return "Giỏi";
-    if (gpa >= 2.5) return "Khá";
-    if (gpa >= 2.0) return "Trung bình";
-    return "Yếu";
-}
-
-        // --- SỬ DỤNG EVENT DELEGATION ĐỂ QUẢN LÝ SỰ KIỆN ---
-        document.body.addEventListener('click', (e) => {
-            const target = e.target;
-
-            // Thêm học kỳ
-            if (target.matches('#add-semester-btn') || target.closest('#add-semester-btn')) {
-                const newSemesterIndex = semestersData.length;
-                semestersData.push({ name: `Học kỳ mới ${newSemesterIndex + 1}`, courses: [] });
-                calculateAll(); // Tính toán lại trước khi render
-                const newSemesterElement = createSemesterElement(semestersData[newSemesterIndex], newSemesterIndex);
-                semestersContainer.appendChild(newSemesterElement);
-                updateUI();
+       
+        // --- EXPORT FUNCTIONS ---
+        function exportToExcel() {
+            if (semestersData.length === 0) {
+                showModal('Không có dữ liệu', 'Không có dữ liệu học kỳ nào để xuất ra Excel.', null);
                 return;
             }
 
-            // Xuất Excel
-            const exportExcelBtn = target.closest('#export-excel-btn');
-            if (exportExcelBtn) {
+            // ... (rest of the exportToExcel function is unchanged)
+            const workbook = XLSX.utils.book_new();
+            const date = new Date().toLocaleDateString('vi-VN');
+            const time = new Date().toLocaleTimeString('vi-VN');
+            const summary = calculateAll();
+
+            // Create a general info sheet
+            const infoSheetData = [
+                ["BẢNG ĐIỂM SMART_GPA"],
+                [],
+                ["Ngày xuất:", date, "Lúc:", time],
+                [],
+                ["TỔNG KẾT TOÀN KHÓA"],
+                ["Tổng số tín chỉ đăng ký:", summary.totalCreditsRegistered],
+                ["Tổng số tín chỉ tích lũy:", summary.totalCreditsAccumulated],
+                ["GPA Tích Lũy (Hệ 4):", summary.cumulativeGpa.toFixed(3)],
+                ["Xếp loại:", getGradeClassification(summary.cumulativeGpa)]
+            ];
+            const wsInfo = XLSX.utils.aoa_to_sheet(infoSheetData);
+            wsInfo['!cols'] = [{wch: 25}, {wch: 15}, {wch:15}, {wch:15}];
+            XLSX.utils.book_append_sheet(workbook, wsInfo, "Thông Tin Chung");
+
+            semestersData.forEach((semester, index) => {
+                const semesterName = semester.name.replace(/[/\\?*:[\]]/g, ''); // Sanitize sheet name
+                const sheetData = [];
+                // Semester Header
+                sheetData.push([semester.name.toUpperCase()]);
+                sheetData.push([]);
+                sheetData.push(["STT", "Mã môn", "Tên môn học", "Số TC", "Điểm H10", "Điểm Chữ", "Kết Quả"]);
+
+                semester.courses.forEach((course, courseIdx) => {
+                    const score10Display = course.score10 !== null ? course.score10.toFixed(2) : '—';
+                    const result = course.score10 !== null ? (course.passed ? 'Đạt' : 'Trượt') : '—';
+                    sheetData.push([
+                        courseIdx + 1,
+                        course.code,
+                        course.name,
+                        course.credits,
+                        course.score10 !== null ? Number(score10Display) : '—',
+                        course.letter,
+                        result
+                    ]);
+
+                    if (course.components && course.components.length > 1) {
+                        sheetData.push(["", "Thành phần điểm", "Trọng số (%)", "Điểm"]);
+                        course.components.forEach(comp => {
+                           sheetData.push(["", comp.name, comp.weight, comp.score]);
+                        });
+                        const weightStatus = course.totalWeight === 100 ? "✓ Đạt 100%" : `⚠ Tổng: ${course.totalWeight}%`;
+                        sheetData.push(["", "Tổng trọng số", weightStatus]);
+                        sheetData.push([]); // Spacer row
+                    }
+                });
+
+                // Semester Summary
+                sheetData.push([]);
+                sheetData.push(["TÓM TẮT HỌC KỲ"]);
+                sheetData.push(["Tín chỉ đăng ký:", semester.creditsRegistered]);
+                sheetData.push(["Tín chỉ đạt:", semester.creditsEarned]);
+                sheetData.push(["GPA học kỳ (Hệ 4):", semester.gpa.toFixed(2)]);
+                sheetData.push(["Xếp loại:", getGradeClassification(semester.gpa)]);
+                
+                const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                ws['!cols'] = [{wch: 5}, {wch: 20}, {wch: 35}, {wch: 8}, {wch: 10}, {wch: 10}, {wch: 10}];
+                XLSX.utils.book_append_sheet(workbook, ws, semesterName.substring(0, 31));
+            });
+
+            const fileName = `Bang-Diem-GPA-${date.replace(/\//g, '-')}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+        }
+
+        function getGradeClassification(gpa) {
+            if (gpa >= 3.6) return "Xuất sắc";
+            if (gpa >= 3.2) return "Giỏi";
+            if (gpa >= 2.5) return "Khá";
+            if (gpa >= 2.0) return "Trung bình";
+            return "Yếu";
+        }
+
+        // --- EVENT DELEGATION ---
+        document.body.addEventListener('click', (e) => {
+            const target = e.target;
+
+            // Add Semester
+            if (target.matches('#add-semester-btn') || target.closest('#add-semester-btn')) {
+                const newSemesterIndex = semestersData.length;
+                semestersData.push({ name: `Học kỳ mới ${newSemesterIndex + 1}`, courses: [] });
+                // Add the new element to the DOM
+                calculateAll();
+                const newSemesterElement = createSemesterElement(semestersData[newSemesterIndex], newSemesterIndex);
+                semestersContainer.appendChild(newSemesterElement);
+                updateUI(); // Update calculations
+                return;
+            }
+            
+            // Export Excel
+            if (target.matches('#export-excel-btn') || target.closest('#export-excel-btn')) {
                 exportToExcel();
                 return;
             }
 
-            // Xóa học kỳ
+            // Remove Semester - Requires full re-render
             const removeSemesterBtn = target.closest('.remove-semester-btn');
             if(removeSemesterBtn){
                 const semesterIndex = parseInt(removeSemesterBtn.dataset.semesterIndex);
                 showModal('Xóa Học Kỳ?', `Bạn có chắc muốn xóa học kỳ "${semestersData[semesterIndex].name}" và tất cả môn học trong đó?`, () => {
                     semestersData.splice(semesterIndex, 1);
-                    rerenderAll(); // Xóa học kỳ cần render lại để cập nhật index
+                    rerenderAll();
                 });
                 return;
             }
 
-            // Thêm môn học
+            // Add Course
             const addCourseBtn = target.closest('.add-course-btn');
             if(addCourseBtn){
                 const semesterIndex = parseInt(addCourseBtn.dataset.semesterIndex);
                 const courseIndex = semestersData[semesterIndex].courses.length;
-                semestersData[semesterIndex].courses.push({ code: "", name: "Môn học mới", credits: 0, components: [{ name: "Điểm tổng kết", weight: 100, score: null }] });
+                semestersData[semesterIndex].courses.push({ code: "", name: "", credits: 0, components: [{ name: "Điểm tổng kết", weight: 100, score: null }] });
                 
+                // Add the new row to the table without re-rendering everything
                 const courseContainer = addCourseBtn.closest('.semester-container').querySelector('.courses-tbody');
                 const emptyMsg = courseContainer.querySelector('.empty-course-msg');
                 if(emptyMsg) emptyMsg.parentElement.remove();
@@ -707,60 +634,46 @@ function getGradeClassification(gpa) {
                 return;
             }
 
-            // Xóa môn học
+            // Remove Course - Requires full re-render
             const removeCourseBtn = target.closest('.remove-course-btn');
             if(removeCourseBtn){
                 const { semesterIndex, courseIndex } = removeCourseBtn.dataset;
                 showModal('Xóa Môn Học?', `Bạn có chắc muốn xóa môn "${semestersData[semesterIndex].courses[courseIndex].name}"?`, () => {
                     semestersData[semesterIndex].courses.splice(courseIndex, 1);
-                    rerenderAll(); // Xóa môn học cần render lại để cập nhật index
+                    rerenderAll();
                 });
                 return;
             }
             
-            // Xóa thành phần điểm
+            // Remove Component - Requires full re-render
             const removeComponentBtn = target.closest('.remove-component-btn');
             if(removeComponentBtn){
                  const { semesterIndex, courseIndex, compIndex } = removeComponentBtn.dataset;
                  const components = semestersData[semesterIndex].courses[courseIndex].components;
                  if (components.length > 1) {
                      components.splice(compIndex, 1);
-                     updateUI(); // Chỉ cần cập nhật UI thay vì render lại toàn bộ
+                     rerenderAll(); // Re-render is safest to update component indices
                  } else {
-                     showModal('Không thể xóa', 'Mỗi môn học phải có ít nhất một thành phần điểm.', () => {});
+                     showModal('Không thể xóa', 'Mỗi môn học phải có ít nhất một thành phần điểm.', null);
                  }
                  return;
             }
             
-            // Thêm thành phần điểm - ĐÃ SỬA
+            // Add Component
             const addComponentBtn = target.closest('.add-component-btn');
             if(addComponentBtn){
                 const { semesterIndex, courseIndex } = addComponentBtn.dataset;
                 const newCompIndex = semestersData[semesterIndex].courses[courseIndex].components.length;
-                semestersData[semesterIndex].courses[courseIndex].components.push({ 
-                    name: "Thành phần mới", 
-                    weight: 0, 
-                    score: null 
-                });
+                semestersData[semesterIndex].courses[courseIndex].components.push({ name: "Thành phần mới", weight: 0, score: null });
                 
-                // Thêm dòng mới vào bảng thành phần
                 const componentsTbody = addComponentBtn.closest('.details-row').querySelector('.components-tbody');
-                const newRow = document.createElement('tr');
-                newRow.className = 'group';
-                newRow.dataset.compIndex = newCompIndex;
-                newRow.innerHTML = `
-                    <td class="p-2 w-2/3"><input type="text" value="Thành phần mới" class="comp-data-input w-full p-1 rounded bg-white" data-field="name" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${newCompIndex}"></td>
-                    <td class="p-2"><input type="number" value="0" placeholder="%" min="0" max="100" class="comp-data-input w-full p-1 rounded text-center bg-white" data-field="weight" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${newCompIndex}"></td>
-                    <td class="p-2"><input type="number" value="" placeholder="Điểm" min="0" max="10" step="0.1" class="comp-data-input w-full p-1 rounded text-center bg-white" data-field="score" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${newCompIndex}"></td>
-                    <td class="p-2 text-center w-12"><button class="icon-btn delete remove-component-btn opacity-50 group-hover:opacity-100" title="Xóa thành phần" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${newCompIndex}"><i class="fas fa-minus-circle"></i></button></td>
-                `;
-                componentsTbody.appendChild(newRow);
-                
+                const newRowHTML = createComponentRow(semestersData[semesterIndex].courses[courseIndex].components[newCompIndex], semesterIndex, courseIndex, newCompIndex);
+                componentsTbody.insertAdjacentHTML('beforeend', newRowHTML);
                 updateUI();
                 return;
             }
 
-            // Mở/đóng chi tiết môn học
+            // Toggle details view
             const toggleBtn = target.closest('.toggle-details-btn');
             if (toggleBtn) {
                 const detailsRow = toggleBtn.closest('tr.course-row').nextElementSibling;
@@ -772,6 +685,7 @@ function getGradeClassification(gpa) {
             }
         });
 
+        // Event listener for input changes
         document.body.addEventListener('input', (e) => {
             const target = e.target;
             const { semesterIndex, courseIndex, compIndex, field } = target.dataset;
@@ -781,28 +695,37 @@ function getGradeClassification(gpa) {
                  if (target.classList.contains('semester-name-input')) {
                      semestersData[semesterIndex].name = value;
                  } else if (target.classList.contains('course-data-input')) {
-                     semestersData[semesterIndex].courses[courseIndex][field] = value;
+                     const isNumber = target.type === 'number';
+                     semestersData[semesterIndex].courses[courseIndex][field] = isNumber ? parseFloat(value) || 0 : value;
                  } else if (target.classList.contains('comp-data-input')) {
-                     semestersData[semesterIndex].courses[courseIndex].components[compIndex][field] = value;
+                     const isNumber = target.type === 'number';
+                     semestersData[semesterIndex].courses[courseIndex].components[compIndex][field] = isNumber ? parseFloat(value) : value;
                  }
                  
-                 updateUI();
+                 // This is the key to a smooth experience: only update calculations, don't re-build the whole page.
+                 updateUI(); 
             }
         });
-
-        // --- KHỞI TẠO ---
+        // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
             loadData();
             rerenderAll();
+            
+            // Connect Save and Reset buttons
+            document.getElementById('save-data-btn').addEventListener('click', saveData);
+            document.getElementById('reset-data-btn').addEventListener('click', resetData);
         });
-        document.onkeydown = function(e) {
-    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
-        e.preventDefault();
-    }
-};
 
+        // Prevent Ctrl+S and Ctrl+U
+        document.onkeydown = function(e) {
+            if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
+                e.preventDefault();
+                // Optionally, trigger save on Ctrl+S
+                if (e.key === 's' || e.key === 'S') {
+                    saveData();
+                }
+            }
+        };
     </script>
 </body>
-
 </html>
-
