@@ -332,7 +332,7 @@
                     semester.courses.forEach((course, courseIndex) => {
                          const mainRow = semesterDiv.querySelector(`[data-course-row-index="${courseIndex}"]`);
                          if(mainRow){
-                            const score10Display = course.score10 !== null ? course.score10.toFixed(2) : '—';
+                            const score10Display = course.score10 !== null ? course.score10.toFixed(1) : '—';
                             const resultIcon = course.score10 !== null ? (course.passed 
                                 ? `<i class="fas fa-check-circle text-xl text-green-500"></i>` 
                                 : `<i class="fas fa-times-circle text-xl text-red-500"></i>`) : '—';
@@ -534,7 +534,7 @@
                 sheetData.push(["STT", "Mã môn", "Tên môn học", "Số TC", "Điểm H10", "Điểm Chữ", "Kết Quả"]);
 
                 semester.courses.forEach((course, courseIdx) => {
-                    const score10Display = course.score10 !== null ? course.score10.toFixed(2) : '—';
+                    const score10Display = course.score10 !== null ? course.score10.toFixed(1) : '—';
                     const result = course.score10 !== null ? (course.passed ? 'Đạt' : 'Trượt') : '—';
                     sheetData.push([
                         courseIdx + 1,
