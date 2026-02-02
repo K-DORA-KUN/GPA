@@ -21,6 +21,8 @@
             --danger-color: #ef4444;
             --danger-hover: #dc2626;
             --success-color: #10b981;
+            --import-color: #f59e0b;
+            --import-hover: #d97706;
             --border-color: #e5e7eb;
         }
         body { font-family: 'Be Vietnam Pro', sans-serif; background-color: var(--primary-bg); color: var(--primary-text); }
@@ -30,7 +32,6 @@
         input[type="number"], input[type="text"] { transition: all 0.2s ease-in-out; border: 1px solid var(--border-color); }
         input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2); }
         
-        /* Cải thiện giao diện ô nhập tên học kỳ */
         .semester-name-input {
             border: 1px dashed transparent !important;
             transition: all 0.2s;
@@ -45,15 +46,20 @@
         .btn-primary:hover { background-color: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         .btn-danger { background-color: var(--danger-color); color: white; }
         .btn-danger:hover { background-color: var(--danger-hover); }
+        .btn-import { background-color: var(--import-color); color: white; }
+        .btn-import:hover { background-color: var(--import-hover); transform: translateY(-1px); }
+
         .icon-btn { background: none; border: none; cursor: pointer; color: var(--secondary-text); transition: color 0.2s; }
         .icon-btn:hover { color: var(--primary-text); }
         .icon-btn.delete:hover { color: var(--danger-color); }
         .fade-in { animation: fadeIn 0.5s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s ease-in-out; }
         .modal-overlay.visible { opacity: 1; visibility: visible; }
-        .modal-content { background: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; transform: scale(0.95); transition: all 0.3s ease-in-out; }
+        .modal-content { background: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 500px; transform: scale(0.95); transition: all 0.3s ease-in-out; }
         .modal-overlay.visible .modal-content { transform: scale(1); }
+        
         .remove-btn { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
         .remove-btn:hover { background-color: #fca5a5; border-color: #f87171; }
         .secondary-btn { background-color: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
@@ -65,7 +71,7 @@
     <div class="max-w-7xl mx-auto bg-container-bg rounded-xl shadow-lg p-6 md:p-8 fade-in">
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 via-teal-500 to-sky-500">
-                Bảng Điểm Smart_GPA
+                Bảng Điểm Smart_GPA</span>
             </h1>
             <p class="text-gray-500 mt-2 text-lg">Quản lý, tính toán và dự đoán kết quả học tập</p>
         </header>
@@ -91,7 +97,7 @@
     <div id="custom-modal" class="modal-overlay">
         <div class="modal-content text-center">
             <h3 id="modal-title" class="text-xl font-bold mb-4">Xác nhận</h3>
-            <p id="modal-message" class="text-gray-600 mb-6">Bạn có chắc chắn muốn thực hiện hành động này?</p>
+            <p id="modal-message" class="text-gray-600 mb-6">Nội dung thông báo...</p>
             <div class="flex justify-center gap-4">
                 <button id="modal-cancel-btn" class="action-btn bg-gray-200 text-gray-800 hover:bg-gray-300">Hủy bỏ</button>
                 <button id="modal-confirm-btn" class="action-btn btn-danger">Xác nhận</button>
@@ -128,6 +134,10 @@
             const savedData = localStorage.getItem('gpaData');
             if (savedData) {
                 semestersData = JSON.parse(savedData);
+            } else {
+                if (semestersData.length === 0) {
+                    semestersData.push({ name: "Học kỳ 1", courses: [] });
+                }
             }
         }
         
@@ -139,11 +149,9 @@
             });
         }
 
-        // --- CALCULATION FUNCTIONS ---
-        // Hàm chuyển đổi điểm số (Áp dụng sau khi đã làm tròn)
+        // --- CALCULATION LOGIC ---
         function convertScore(score10) {
             if (score10 === null || isNaN(score10)) return { score4: 0, letter: 'N/A', passed: false, color: 'text-gray-500' };
-            // Quy tắc quy đổi (tham khảo chuẩn chung, có thể sửa nếu cần)
             if (score10 >= 8.5) return { score4: 4.0, letter: 'A', passed: true, color: 'text-green-500' };
             if (score10 >= 7.8) return { score4: 3.5, letter: 'B+', passed: true, color: 'text-green-500' };
             if (score10 >= 7.0) return { score4: 3.0, letter: 'B', passed: true, color: 'text-sky-500' };
@@ -167,6 +175,11 @@
                 semester.courses.forEach(course => {
                     let totalWeight = 0;
                     let weightedScoreSum = 0;
+                    
+                    if (course.components.length === 0 && course.score10 !== null) {
+                         course.components.push({ name: "Điểm tổng kết", weight: 100, score: course.score10 });
+                    }
+
                     course.components.forEach(comp => {
                         const weight = parseFloat(comp.weight) || 0;
                         const score = parseFloat(comp.score);
@@ -178,15 +191,11 @@
 
                     course.totalWeight = totalWeight;
                     
-                    // Tính điểm hệ 10 thô
-                    let rawScore10 = totalWeight > 0 ? (weightedScoreSum / totalWeight) : null;
-                    
-                    // --- CẬP NHẬT: LÀM TRÒN ĐIỂM THI 1 SỐ LẺ ---
-                    // Ví dụ: 8.45 -> 8.5 (để quy đổi sang điểm chữ được lợi hơn)
-                    if (rawScore10 !== null) {
+                    if (totalWeight > 0) {
+                        let rawScore10 = weightedScoreSum / totalWeight;
                         course.score10 = Math.round(rawScore10 * 10) / 10;
-                    } else {
-                        course.score10 = null;
+                    } else if (course.score10 !== null) {
+                         course.score10 = Math.round(course.score10 * 10) / 10;
                     }
                     
                     const { score4, letter, passed, color } = convertScore(course.score10);
@@ -220,7 +229,116 @@
             return { totalCreditsRegistered, totalCreditsAccumulated, cumulativeGpa };
         }
 
-        // --- RENDER FUNCTIONS ---
+        // --- EXCEL IMPORT LOGIC (UPDATED) ---
+        function handleImportFile(file, semesterIndex) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+
+                if (jsonData.length < 2) {
+                    showModal('Lỗi File', 'File không có dữ liệu.', null);
+                    return;
+                }
+
+                // --- BƯỚC 1: DỌN DẸP DÒNG TRỐNG ---
+                // Trước khi import, xóa các dòng rỗng/rác hiện có trong học kỳ để tránh lỗi "dòng đầu trống"
+                const currentCourses = semestersData[semesterIndex].courses;
+                if (currentCourses.length > 0) {
+                    semestersData[semesterIndex].courses = currentCourses.filter(c => 
+                        (c.name && c.name.trim() !== '') || (c.score10 !== null)
+                    );
+                }
+
+                // --- BƯỚC 2: TÌM DÒNG TIÊU ĐỀ THÔNG MINH ---
+                let headerRowIndex = -1;
+                let colMap = { code: -1, name: -1, credits: -1, score: -1 };
+                
+                // Quét 5 dòng đầu
+                for(let i = 0; i < Math.min(5, jsonData.length); i++) {
+                    const row = jsonData[i].map(cell => String(cell).toLowerCase().trim());
+                    
+                    row.forEach((cell, idx) => {
+                        if(cell.includes('mã') && (cell.includes('môn') || cell.includes('hp') || cell.includes('mh'))) colMap.code = idx;
+                        else if(cell.includes('tên') && (cell.includes('môn') || cell.includes('hp') || cell.includes('mh'))) colMap.name = idx;
+                        else if(cell.includes('tín') || cell.includes('tc') || cell.includes('dvht')) colMap.credits = idx;
+                        else if(cell.includes('điểm') && (cell.includes('10') || cell.includes('tổng') || cell.includes('tk') || cell === 'điểm')) colMap.score = idx;
+                    });
+
+                    // Chỉ cần tìm thấy Tên và Tín chỉ là chốt
+                    if(colMap.name !== -1 && colMap.credits !== -1) {
+                        headerRowIndex = i;
+                        break;
+                    }
+                }
+
+                // --- BƯỚC 3: XỬ LÝ NẾU KHÔNG TÌM THẤY TIÊU ĐỀ (FALLBACK) ---
+                if (headerRowIndex === -1) {
+                    // Giả định file có STT ở đầu: STT(0), Mã(1), Tên(2), TC(3) -> Khớp với file của bạn
+                    colMap = { code: 1, name: 2, credits: 3, score: 4 };
+                    // Nếu cột 0 là Mã môn thì dịch chuyển lại
+                    const firstRow = jsonData[0] || [];
+                    const firstCell = String(firstRow[0]).trim().toUpperCase();
+                    if (firstCell.startsWith('IT') || firstCell.startsWith('MA') || firstCell.length > 4) {
+                         // File không có STT, bắt đầu luôn bằng Mã
+                         colMap = { code: 0, name: 1, credits: 2, score: 3 };
+                    }
+                    headerRowIndex = -1; 
+                }
+
+                let importedCount = 0;
+                for(let i = headerRowIndex + 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (!row || row.length === 0) continue;
+
+                    const name = colMap.name !== -1 ? row[colMap.name] : '';
+                    if (!name) continue; 
+
+                    const code = colMap.code !== -1 ? (row[colMap.code] || '') : '';
+                    let credits = colMap.credits !== -1 ? parseInt(row[colMap.credits]) : 0;
+                    if (isNaN(credits)) credits = 0; // Fix lỗi NaN
+
+                    let score = null;
+                    if (colMap.score !== -1 && row[colMap.score] != null && String(row[colMap.score]).trim() !== '') {
+                        score = parseFloat(row[colMap.score]);
+                    }
+
+                    // Bỏ qua dòng tiêu đề nếu bị lọt vào (trường hợp fallback)
+                    if (String(name).toLowerCase().includes('tên môn')) continue;
+
+                    const newCourse = {
+                        code: String(code),
+                        name: String(name),
+                        credits: credits,
+                        score10: isNaN(score) ? null : score,
+                        components: [],
+                        totalWeight: 100
+                    };
+                    
+                    if (newCourse.score10 !== null) {
+                        newCourse.components.push({ name: "Điểm Import", weight: 100, score: newCourse.score10 });
+                    } else {
+                        newCourse.components.push({ name: "Điểm tổng kết", weight: 100, score: null });
+                    }
+
+                    semestersData[semesterIndex].courses.push(newCourse);
+                    importedCount++;
+                }
+
+                if (importedCount > 0) {
+                    showModal('Thành công', `Đã nhập ${importedCount} môn. Lưu ý: Nếu file không có cột điểm, bạn cần tự nhập điểm.`, null);
+                    rerenderAll();
+                } else {
+                    showModal('Thất bại', 'Không đọc được dữ liệu. Vui lòng kiểm tra file.', null);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- UI RENDERING ---
         const semestersContainer = document.getElementById('semesters-container');
         const summaryContainer = document.getElementById('summary-container');
         
@@ -241,7 +359,6 @@
                 const semesterDiv = semestersContainer.querySelector(`[data-semester-container-index="${semesterIndex}"]`);
                 if(semesterDiv){
                     const semesterSummaryDiv = semesterDiv.querySelector('.semester-summary');
-                    // Hiển thị GPA kỳ với 2 số lẻ
                     semesterSummaryDiv.innerHTML = `
                         <span>TC ĐK: <strong class="text-blue-600">${semester.creditsRegistered}</strong></span>
                         <span>TC Đạt: <strong class="text-green-600">${semester.creditsEarned}</strong></span>
@@ -251,7 +368,6 @@
                     semester.courses.forEach((course, courseIndex) => {
                          const mainRow = semesterDiv.querySelector(`[data-course-row-index="${courseIndex}"]`);
                          if(mainRow){
-                            // Hiển thị điểm hệ 10 đã làm tròn 1 số lẻ
                             const score10Display = course.score10 !== null ? course.score10.toFixed(1) : '—';
                             const resultIcon = course.score10 !== null ? (course.passed 
                                 ? `<i class="fas fa-check-circle text-xl text-green-500"></i>` 
@@ -261,15 +377,10 @@
                             mainRow.cells[5].className = `p-3 text-center text-lg font-bold ${course.color}`;
                             mainRow.cells[5].textContent = course.letter;
                             mainRow.cells[6].innerHTML = resultIcon;
-
-                            const detailsRow = mainRow.nextElementSibling;
-                            if(detailsRow && detailsRow.classList.contains('details-row')){
-                                 const weightWarning = course.totalWeight !== 100 ? `<i class="fas fa-exclamation-triangle text-yellow-500 ml-2" title="Tổng trọng số khác 100%"></i>` : '';
-                                 const weightSpan = detailsRow.querySelector('.total-weight-display');
-                                 if (weightSpan) {
-                                     weightSpan.innerHTML = `Tổng trọng số: <strong class="${course.totalWeight === 100 ? 'text-green-600' : 'text-red-600'}">${course.totalWeight}%</strong>${weightWarning}`;
-                                 }
-                            }
+                            
+                            // Check inputs
+                            const codeInput = mainRow.querySelector('[data-field="code"]');
+                            if(codeInput && codeInput.value !== course.code) codeInput.value = course.code;
                          }
                     });
                 }
@@ -280,7 +391,6 @@
             const semesterDiv = document.createElement('div');
             semesterDiv.className = 'semester-container mb-8 bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 fade-in';
             semesterDiv.dataset.semesterContainerIndex = semesterIndex;
-            // Input tên học kỳ đã được style lại để dễ nhận biết hơn
             semesterDiv.innerHTML = `
                 <div class="bg-gray-50 p-4 flex justify-between items-center border-b border-gray-200">
                     <input type="text" value="${semester.name}" class="semester-name-input text-xl font-bold text-gray-700 bg-transparent focus:ring-0 p-1 w-full md:w-1/2" data-semester-index="${semesterIndex}" placeholder="Nhập tên học kỳ...">
@@ -290,9 +400,9 @@
                     <table class="min-w-full">
                         <thead class="bg-blue-800"><tr class="table-header">
                             <th class="p-3 text-left text-xs font-semibold uppercase tracking-wider w-12">STT</th>
-                            <th class="p-3 text-left text-xs font-semibold uppercase tracking-wider w-40">Mã môn học</th>
+                            <th class="p-3 text-left text-xs font-semibold uppercase tracking-wider w-32">Mã môn</th>
                             <th class="p-3 text-left text-xs font-semibold uppercase tracking-wider">Tên môn học</th>
-                            <th class="p-3 text-center text-xs font-semibold uppercase tracking-wider w-24">Số TC</th>
+                            <th class="p-3 text-center text-xs font-semibold uppercase tracking-wider w-20">Số TC</th>
                             <th class="p-3 text-center text-xs font-semibold uppercase tracking-wider w-24">Điểm H10</th>
                             <th class="p-3 text-center text-xs font-semibold uppercase tracking-wider w-24">Điểm Chữ</th>
                             <th class="p-3 text-center text-xs font-semibold uppercase tracking-wider w-24">Kết Quả</th>
@@ -300,31 +410,38 @@
                         </tr></thead>
                         <tbody class="divide-y divide-gray-200 courses-tbody">
                             ${semester.courses.map((course, courseIndex) => createCourseRow(course, semesterIndex, courseIndex)).join('')}
-                            ${semester.courses.length === 0 ? `<tr><td colspan="8" class="empty-course-msg text-center p-8 text-gray-500">Chưa có môn học nào. Hãy thêm một môn!</td></tr>` : ''}
+                            ${semester.courses.length === 0 ? `<tr><td colspan="8" class="empty-course-msg text-center p-8 text-gray-500">Chưa có môn học nào. Hãy thêm hoặc nhập file Excel!</td></tr>` : ''}
                         </tbody>
                     </table>
                 </div>
-                <div class="p-4 bg-gray-50 flex justify-between items-center border-t">
-                     <div class="semester-summary text-sm font-semibold text-gray-600 space-x-4">
-                        <span>TC ĐK: <strong class="text-blue-600">${semester.creditsRegistered}</strong></span>
-                        <span>TC Đạt: <strong class="text-green-600">${semester.creditsEarned}</strong></span>
-                        <span>GPA Kỳ: <strong class="text-purple-600">${semester.gpa.toFixed(2)}</strong></span>
+                <div class="p-4 bg-gray-50 flex flex-col md:flex-row justify-between items-center border-t gap-4">
+                     <div class="semester-summary text-sm font-semibold text-gray-600 space-x-2 md:space-x-4">
+                        <span class="block md:inline">TC ĐK: <strong class="text-blue-600">${semester.creditsRegistered}</strong></span>
+                        <span class="block md:inline">TC Đạt: <strong class="text-green-600">${semester.creditsEarned}</strong></span>
+                        <span class="block md:inline">GPA Kỳ: <strong class="text-purple-600">${semester.gpa.toFixed(2)}</strong></span>
                     </div>
-                    <button class="add-course-btn action-btn btn-primary text-sm" data-semester-index="${semesterIndex}"><i class="fas fa-plus"></i> Thêm Môn</button>
+                    <div class="flex gap-2">
+                        <input type="file" id="file-input-${semesterIndex}" class="hidden" accept=".xlsx, .xls, .csv" data-semester-index="${semesterIndex}">
+                        <button class="import-excel-trigger action-btn btn-import text-sm" data-semester-index="${semesterIndex}">
+                            <i class="fas fa-file-import"></i> Nhập Excel
+                        </button>
+                        <button class="add-course-btn action-btn btn-primary text-sm" data-semester-index="${semesterIndex}">
+                            <i class="fas fa-plus"></i> Thêm Môn
+                        </button>
+                    </div>
                 </div>
             `;
             return semesterDiv;
         }
 
         function createCourseRow(course, semesterIndex, courseIndex) {
-            // Hiển thị điểm đã làm tròn 1 số lẻ
             const score10Display = course.score10 !== null ? course.score10.toFixed(1) : '—';
             const resultIcon = course.score10 !== null ? (course.passed 
                 ? `<i class="fas fa-check-circle text-xl text-green-500"></i>` 
                 : `<i class="fas fa-times-circle text-xl text-red-500"></i>`) : '—';
             const weightWarning = course.totalWeight !== 100 ? `<i class="fas fa-exclamation-triangle text-yellow-500 ml-2" title="Tổng trọng số khác 100%"></i>` : '';
 
-            const rowHtml = `
+            return `
                 <tr class="course-row hover:bg-gray-50" data-course-row-index="${courseIndex}">
                     <td class="p-3 text-center text-sm font-medium text-gray-500">${courseIndex + 1}</td>
                     <td class="p-3"><input type="text" value="${course.code}" class="course-data-input w-full p-1 rounded" data-field="code" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}"></td>
@@ -351,7 +468,6 @@
                     <button class="add-component-btn mt-2 text-sm text-indigo-600 font-semibold hover:text-indigo-800" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}"><i class="fas fa-plus mr-1"></i>Thêm thành phần</button>
                 </div></td></tr>
             `;
-            return rowHtml;
         }
 
         function createComponentRow(comp, semesterIndex, courseIndex, compIndex) {
@@ -359,13 +475,12 @@
                 <tr class="group" data-comp-index="${compIndex}">
                     <td class="p-2 w-2/3"><input type="text" value="${comp.name}" class="comp-data-input w-full p-1 rounded bg-white" data-field="name" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${compIndex}"></td>
                     <td class="p-2"><input type="number" value="${comp.weight}" placeholder="%" min="0" max="100" class="comp-data-input w-full p-1 rounded text-center bg-white" data-field="weight" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${compIndex}"></td>
-                    <td class="p-2"><input type="number" value="${comp.score || ''}" placeholder="Điểm" min="0" max="10" step="0.1" class="comp-data-input w-full p-1 rounded text-center bg-white" data-field="score" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${compIndex}"></td>
+                    <td class="p-2"><input type="number" value="${comp.score !== null ? comp.score : ''}" placeholder="Điểm" min="0" max="10" step="0.1" class="comp-data-input w-full p-1 rounded text-center bg-white" data-field="score" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${compIndex}"></td>
                     <td class="p-2 text-center w-12"><button class="icon-btn delete remove-component-btn opacity-50 group-hover:opacity-100" title="Xóa thành phần" data-semester-index="${semesterIndex}" data-course-index="${courseIndex}" data-comp-index="${compIndex}"><i class="fas fa-minus-circle"></i></button></td>
                 </tr>`;
         }
         
         function createSummaryElement(summary) {
-            // CẬP NHẬT: GPA Tích lũy hiển thị 2 số sau dấu phẩy
             const summaryItems = [
                 { icon: 'fa-layer-group', label: 'Tổng TC Đăng Ký', value: summary.totalCreditsRegistered, color: 'text-blue-500' },
                 { icon: 'fa-check-double', label: 'Tổng TC Tích Lũy', value: summary.totalCreditsAccumulated, color: 'text-green-500' },
@@ -410,92 +525,49 @@
         }
 
         modalConfirmBtn.onclick = () => {
-            if (confirmCallback) {
-                confirmCallback();
-            }
+            if (confirmCallback) confirmCallback();
             hideModal();
         };
         modalCancelBtn.onclick = hideModal;
         modal.onclick = (e) => { if (e.target === modal) hideModal(); };
 
-        
-        // --- EXPORT FUNCTIONS ---
+        // --- EXPORT FUNCTION ---
         function exportToExcel() {
             if (semestersData.length === 0) {
-                showModal('Không có dữ liệu', 'Không có dữ liệu học kỳ nào để xuất ra Excel.', null);
+                showModal('Không có dữ liệu', 'Không có dữ liệu nào để xuất.', null);
                 return;
             }
-
             const workbook = XLSX.utils.book_new();
             const date = new Date().toLocaleDateString('vi-VN');
-            const time = new Date().toLocaleTimeString('vi-VN');
             const summary = calculateAll();
-
-            // Create a general info sheet
-            const infoSheetData = [
-                ["BẢNG ĐIỂM SMART_GPA"],
-                [],
-                ["Ngày xuất:", date, "Lúc:", time],
-                [],
-                ["TỔNG KẾT TOÀN KHÓA"],
-                ["Tổng số tín chỉ đăng ký:", summary.totalCreditsRegistered],
-                ["Tổng số tín chỉ tích lũy:", summary.totalCreditsAccumulated],
-                ["GPA Tích Lũy (Hệ 4):", summary.cumulativeGpa.toFixed(2)], // Xuất Excel cũng làm tròn 2 số
-                ["Xếp loại:", getGradeClassification(summary.cumulativeGpa)]
+            
+            const infoData = [
+                ["BẢNG ĐIỂM SMART_GPA PRO"], [],
+                ["Ngày xuất:", date], [],
+                ["GPA Tích Lũy:", summary.cumulativeGpa.toFixed(2)],
+                ["Tín chỉ tích lũy:", summary.totalCreditsAccumulated]
             ];
-            const wsInfo = XLSX.utils.aoa_to_sheet(infoSheetData);
-            wsInfo['!cols'] = [{wch: 25}, {wch: 15}, {wch:15}, {wch:15}];
-            XLSX.utils.book_append_sheet(workbook, wsInfo, "Thông Tin Chung");
+            const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
+            XLSX.utils.book_append_sheet(workbook, wsInfo, "Info");
 
-            semestersData.forEach((semester, index) => {
-                const semesterName = semester.name.replace(/[/\\?*:[\]]/g, '') || `Học kỳ ${index + 1}`;
-                const sheetData = [];
-                // Semester Header
-                sheetData.push([semester.name.toUpperCase()]);
-                sheetData.push([]);
-                sheetData.push(["STT", "Mã môn", "Tên môn học", "Số TC", "Điểm H10", "Điểm Chữ", "Kết Quả"]);
-
-                semester.courses.forEach((course, courseIdx) => {
-                    const score10Display = course.score10 !== null ? course.score10.toFixed(1) : '—';
-                    const result = course.score10 !== null ? (course.passed ? 'Đạt' : 'Trượt') : '—';
-                    sheetData.push([
-                        courseIdx + 1,
-                        course.code,
-                        course.name,
-                        course.credits,
-                        course.score10 !== null ? Number(score10Display) : '—',
-                        course.letter,
-                        result
+            semestersData.forEach((sem, idx) => {
+                const sheetName = (sem.name.replace(/[:\/?*\[\]\\]/g, "") || `HocKy_${idx+1}`).substring(0, 31);
+                const data = [
+                    [sem.name.toUpperCase()], [],
+                    ["STT", "Mã MH", "Tên Môn Học", "Số TC", "Điểm H10", "Điểm Chữ"]
+                ];
+                sem.courses.forEach((c, cIdx) => {
+                    data.push([
+                        cIdx + 1, c.code, c.name, c.credits, 
+                        c.score10 !== null ? c.score10 : "", c.letter
                     ]);
-
-                    if (course.components && course.components.length > 1) {
-                        sheetData.push(["", "Thành phần điểm", "Trọng số (%)", "Điểm"]);
-                        course.components.forEach(comp => {
-                           sheetData.push(["", comp.name, comp.weight, comp.score]);
-                        });
-                        const weightStatus = course.totalWeight === 100 ? "✓ Đạt 100%" : `⚠ Tổng: ${course.totalWeight}%`;
-                        sheetData.push(["", "Tổng trọng số", weightStatus]);
-                        sheetData.push([]); // Spacer row
-                    }
                 });
-
-                // Semester Summary
-                sheetData.push([]);
-                sheetData.push(["TÓM TẮT HỌC KỲ"]);
-                sheetData.push(["Tín chỉ đăng ký:", semester.creditsRegistered]);
-                sheetData.push(["Tín chỉ đạt:", semester.creditsEarned]);
-                sheetData.push(["GPA học kỳ (Hệ 4):", semester.gpa.toFixed(2)]);
-                sheetData.push(["Xếp loại:", getGradeClassification(semester.gpa)]);
-                
-                const ws = XLSX.utils.aoa_to_sheet(sheetData);
-                ws['!cols'] = [{wch: 5}, {wch: 20}, {wch: 35}, {wch: 8}, {wch: 10}, {wch: 10}, {wch: 10}];
-                XLSX.utils.book_append_sheet(workbook, ws, semesterName.substring(0, 31));
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                XLSX.utils.book_append_sheet(workbook, ws, sheetName);
             });
-
-            const fileName = `Bang-Diem-GPA-${date.replace(/\//g, '-')}.xlsx`;
-            XLSX.writeFile(workbook, fileName);
+            XLSX.writeFile(workbook, `BangDiem_${date.replace(/\//g,'-')}.xlsx`);
         }
-
+        
         function getGradeClassification(gpa) {
             if (gpa >= 3.6) return "Xuất sắc";
             if (gpa >= 3.2) return "Giỏi";
@@ -508,142 +580,125 @@
         document.body.addEventListener('click', (e) => {
             const target = e.target;
 
-            // Add Semester
-            if (target.matches('#add-semester-btn') || target.closest('#add-semester-btn')) {
-                const newSemesterIndex = semestersData.length;
-                semestersData.push({ name: `Học kỳ mới ${newSemesterIndex + 1}`, courses: [] });
-                rerenderAll(); // Sử dụng rerenderAll cho an toàn khi thêm container lớn
+            if (target.closest('#add-semester-btn')) {
+                semestersData.push({ name: `Học kỳ ${semestersData.length + 1}`, courses: [] });
+                rerenderAll();
                 return;
             }
-            
-            // Export Excel
-            if (target.matches('#export-excel-btn') || target.closest('#export-excel-btn')) {
+            if (target.closest('#export-excel-btn')) {
                 exportToExcel();
                 return;
             }
 
-            // Remove Semester
             const removeSemesterBtn = target.closest('.remove-semester-btn');
             if(removeSemesterBtn){
-                const semesterIndex = parseInt(removeSemesterBtn.dataset.semesterIndex);
-                showModal('Xóa Học Kỳ?', `Bạn có chắc muốn xóa học kỳ "${semestersData[semesterIndex].name}" và tất cả môn học trong đó?`, () => {
-                    semestersData.splice(semesterIndex, 1);
+                const idx = parseInt(removeSemesterBtn.dataset.semesterIndex);
+                showModal('Xóa Học Kỳ?', `Bạn có chắc muốn xóa "${semestersData[idx].name}"?`, () => {
+                    semestersData.splice(idx, 1);
                     rerenderAll();
                 });
                 return;
             }
 
-            // Add Course
             const addCourseBtn = target.closest('.add-course-btn');
             if(addCourseBtn){
-                const semesterIndex = parseInt(addCourseBtn.dataset.semesterIndex);
-                const courseIndex = semestersData[semesterIndex].courses.length;
-                semestersData[semesterIndex].courses.push({ code: "", name: "", credits: 0, components: [{ name: "Điểm tổng kết", weight: 100, score: null }] });
-                
-                const courseContainer = addCourseBtn.closest('.semester-container').querySelector('.courses-tbody');
-                const emptyMsg = courseContainer.querySelector('.empty-course-msg');
-                if(emptyMsg) emptyMsg.parentElement.remove();
-                
-                calculateAll();
-                const newCourseRow = createCourseRow(semestersData[semesterIndex].courses[courseIndex], semesterIndex, courseIndex);
-                courseContainer.insertAdjacentHTML('beforeend', newCourseRow);
-                updateUI();
+                const sIdx = parseInt(addCourseBtn.dataset.semesterIndex);
+                semestersData[sIdx].courses.push({ code: "", name: "", credits: 0, score10: null, components: [{ name: "Điểm tổng kết", weight: 100, score: null }], totalWeight: 100 });
+                rerenderAll(); 
                 return;
             }
 
-            // Remove Course
             const removeCourseBtn = target.closest('.remove-course-btn');
             if(removeCourseBtn){
                 const { semesterIndex, courseIndex } = removeCourseBtn.dataset;
-                showModal('Xóa Môn Học?', `Bạn có chắc muốn xóa môn "${semestersData[semesterIndex].courses[courseIndex].name}"?`, () => {
+                showModal('Xóa Môn?', `Xóa môn "${semestersData[semesterIndex].courses[courseIndex].name}"?`, () => {
                     semestersData[semesterIndex].courses.splice(courseIndex, 1);
                     rerenderAll();
                 });
                 return;
             }
             
-            // Remove Component
-            const removeComponentBtn = target.closest('.remove-component-btn');
-            if(removeComponentBtn){
-                 const { semesterIndex, courseIndex, compIndex } = removeComponentBtn.dataset;
-                 const components = semestersData[semesterIndex].courses[courseIndex].components;
-                 if (components.length > 1) {
-                     components.splice(compIndex, 1);
+            const removeCompBtn = target.closest('.remove-component-btn');
+            if(removeCompBtn){
+                 const { semesterIndex, courseIndex, compIndex } = removeCompBtn.dataset;
+                 const comps = semestersData[semesterIndex].courses[courseIndex].components;
+                 if(comps.length > 1) {
+                     comps.splice(compIndex, 1);
                      rerenderAll();
                  } else {
-                     showModal('Không thể xóa', 'Mỗi môn học phải có ít nhất một thành phần điểm.', null);
+                     showModal('Lỗi', 'Phải có ít nhất 1 đầu điểm.', null);
                  }
                  return;
             }
             
-            // Add Component
-            const addComponentBtn = target.closest('.add-component-btn');
-            if(addComponentBtn){
-                const { semesterIndex, courseIndex } = addComponentBtn.dataset;
-                const newCompIndex = semestersData[semesterIndex].courses[courseIndex].components.length;
-                semestersData[semesterIndex].courses[courseIndex].components.push({ name: "Thành phần mới", weight: 0, score: null });
-                
-                const componentsTbody = addComponentBtn.closest('.details-row').querySelector('.components-tbody');
-                const newRowHTML = createComponentRow(semestersData[semesterIndex].courses[courseIndex].components[newCompIndex], semesterIndex, courseIndex, newCompIndex);
-                componentsTbody.insertAdjacentHTML('beforeend', newRowHTML);
-                updateUI();
+            const addCompBtn = target.closest('.add-component-btn');
+            if(addCompBtn){
+                const { semesterIndex, courseIndex } = addCompBtn.dataset;
+                semestersData[semesterIndex].courses[courseIndex].components.push({ name: "TP mới", weight: 0, score: null });
+                rerenderAll();
                 return;
             }
 
-            // Toggle details view
             const toggleBtn = target.closest('.toggle-details-btn');
             if (toggleBtn) {
-                const detailsRow = toggleBtn.closest('tr.course-row').nextElementSibling;
+                const row = toggleBtn.closest('tr');
+                const nextRow = row.nextElementSibling;
+                nextRow.classList.toggle('show');
                 const icon = toggleBtn.querySelector('i');
-                detailsRow.classList.toggle('show');
                 icon.classList.toggle('fa-chevron-down');
                 icon.classList.toggle('fa-chevron-up');
                 return;
             }
+
+            const importBtn = target.closest('.import-excel-trigger');
+            if(importBtn) {
+                const sIdx = importBtn.dataset.semesterIndex;
+                const fileInput = document.getElementById(`file-input-${sIdx}`);
+                if(fileInput) fileInput.click();
+            }
         });
 
-        // Event listener for input changes
+        // --- EVENT: CHANGE INPUT ---
         document.body.addEventListener('input', (e) => {
             const target = e.target;
             const { semesterIndex, courseIndex, compIndex, field } = target.dataset;
 
-            // Xử lý riêng cho tên học kỳ
             if (target.classList.contains('semester-name-input')) {
-                const sIndex = target.dataset.semesterIndex;
-                semestersData[sIndex].name = target.value;
-                return; // Không cần updateUI vì tên không ảnh hưởng tính toán
+                semestersData[target.dataset.semesterIndex].name = target.value;
+                return;
             }
 
             if (field) {
-                 const value = target.value;
+                 const val = target.value;
                  if (target.classList.contains('course-data-input')) {
-                     const isNumber = target.type === 'number';
-                     semestersData[semesterIndex].courses[courseIndex][field] = isNumber ? parseFloat(value) || 0 : value;
+                     const isNum = target.type === 'number';
+                     semestersData[semesterIndex].courses[courseIndex][field] = isNum ? parseFloat(val) || 0 : val;
                  } else if (target.classList.contains('comp-data-input')) {
-                     const isNumber = target.type === 'number';
-                     semestersData[semesterIndex].courses[courseIndex].components[compIndex][field] = isNumber ? parseFloat(value) : value;
+                     const isNum = target.type === 'number';
+                     semestersData[semesterIndex].courses[courseIndex].components[compIndex][field] = isNum ? parseFloat(val) : val;
                  }
-                 
                  updateUI(); 
             }
         });
+
+        // --- EVENT: CHANGE INPUT FILE ---
+        document.body.addEventListener('change', (e) => {
+            if(e.target.type === 'file' && e.target.id.startsWith('file-input-')) {
+                const sIdx = e.target.dataset.semesterIndex;
+                if(e.target.files.length > 0) {
+                    handleImportFile(e.target.files[0], sIdx);
+                    e.target.value = '';
+                }
+            }
+        });
         
-        // --- INITIALIZATION ---
+        // --- INIT ---
         document.addEventListener('DOMContentLoaded', () => {
             loadData();
             rerenderAll();
-            
             document.getElementById('save-data-btn').addEventListener('click', saveData);
             document.getElementById('reset-data-btn').addEventListener('click', resetData);
         });
-
-        // Prevent Ctrl+S
-        document.onkeydown = function(e) {
-            if (e.ctrlKey && (e.key === 's' || e.key === 'S')) {
-                e.preventDefault();
-                saveData();
-            }
-        };
     </script>
 </body>
 </html>
