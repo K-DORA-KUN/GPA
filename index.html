@@ -167,8 +167,6 @@
             let totalCreditsAccumulated = 0;
             let totalWeightedScore = 0;
 
-
-            
             semestersData.forEach(semester => {
                 let semesterCreditsRegistered = 0;
                 let semesterCreditsEarned = 0;
@@ -177,14 +175,23 @@
                 semester.courses.forEach(course => {
                     let totalWeight = 0;
                     let weightedScoreSum = 0;
-                    
+                    let hasEmptyScore = false; // Cờ đánh dấu chưa nhập xong
+
+                    // Tự tạo component mặc định nếu chưa có
                     if (course.components.length === 0 && course.score10 !== null) {
                          course.components.push({ name: "Điểm tổng kết", weight: 100, score: course.score10 });
                     }
 
                     course.components.forEach(comp => {
                         const weight = parseFloat(comp.weight) || 0;
-                        const score = parseFloat(comp.score);
+                        const scoreStr = comp.score; // Lấy giá trị thô để kiểm tra rỗng
+                        
+                        // Kiểm tra xem điểm có bị bỏ trống không
+                        if (scoreStr === null || scoreStr === "" || isNaN(parseFloat(scoreStr))) {
+                            hasEmptyScore = true;
+                        }
+
+                        const score = parseFloat(scoreStr);
                         if (!isNaN(score) && weight > 0) {
                             totalWeight += weight;
                             weightedScoreSum += score * weight;
@@ -192,12 +199,17 @@
                     });
 
                     course.totalWeight = totalWeight;
+                    course.isIncomplete = hasEmptyScore; // Lưu trạng thái vào object môn học
                     
                     if (totalWeight > 0) {
                         let rawScore10 = weightedScoreSum / totalWeight;
                         course.score10 = Math.round(rawScore10 * 10) / 10;
-                    } else if (course.score10 !== null) {
+                    } else if (course.score10 !== null && !hasEmptyScore) {
+                         // Nếu không có trọng số (nhập thẳng) và đã nhập điểm
                          course.score10 = Math.round(course.score10 * 10) / 10;
+                    } else {
+                        // Trường hợp chưa nhập gì cả
+                        course.score10 = null;
                     }
                     
                     const { score4, letter, passed, color } = convertScore(course.score10);
@@ -209,6 +221,7 @@
                     const credits = parseFloat(course.credits) || 0;
                     if (credits > 0) {
                         semesterCreditsRegistered += credits;
+                        // Chỉ tính vào tổng kết nếu ĐÃ CÓ ĐIỂM HỆ 10 (tức là đã nhập đủ để tính ra kết quả)
                         if (course.score10 !== null) {
                             totalCreditsRegistered += credits;
                             if (passed) {
@@ -371,18 +384,34 @@
                          const mainRow = semesterDiv.querySelector(`[data-course-row-index="${courseIndex}"]`);
                          if(mainRow){
                             const score10Display = course.score10 !== null ? course.score10.toFixed(1) : '—';
-                            const resultIcon = course.score10 !== null ? (course.passed 
-                                ? `<i class="fas fa-check-circle text-xl text-green-500"></i>` 
-                                : `<i class="fas fa-times-circle text-xl text-red-500"></i>`) : '—';
+                            
+                            // LOGIC MỚI: Icon cảnh báo
+                            let resultIcon;
+                            if (course.isIncomplete) {
+                                resultIcon = `<i class="fas fa-exclamation-triangle text-xl text-yellow-500" title="Chưa nhập đủ điểm thành phần"></i>`;
+                            } else if (course.score10 !== null) {
+                                resultIcon = course.passed 
+                                    ? `<i class="fas fa-check-circle text-xl text-green-500"></i>` 
+                                    : `<i class="fas fa-times-circle text-xl text-red-500"></i>`;
+                            } else {
+                                resultIcon = '—';
+                            }
                             
                             mainRow.cells[4].textContent = score10Display;
                             mainRow.cells[5].className = `p-3 text-center text-lg font-bold ${course.color}`;
                             mainRow.cells[5].textContent = course.letter;
                             mainRow.cells[6].innerHTML = resultIcon;
                             
-                            // Check inputs
                             const codeInput = mainRow.querySelector('[data-field="code"]');
                             if(codeInput && codeInput.value !== course.code) codeInput.value = course.code;
+
+                            // Cập nhật cảnh báo trọng số
+                            const detailsRow = mainRow.nextElementSibling;
+                            if(detailsRow && detailsRow.classList.contains('details-row')){
+                                 const weightWarning = course.totalWeight !== 100 ? `<i class="fas fa-exclamation-triangle text-yellow-500 ml-2" title="Tổng trọng số khác 100%"></i>` : '';
+                                 const weightSpan = detailsRow.querySelector('.total-weight-display');
+                                 if(weightSpan) weightSpan.innerHTML = `Tổng trọng số: <strong class="${course.totalWeight === 100 ? 'text-green-600' : 'text-red-600'}">${course.totalWeight}%</strong>${weightWarning}`;
+                            }
                          }
                     });
                 }
@@ -438,9 +467,19 @@
 
         function createCourseRow(course, semesterIndex, courseIndex) {
             const score10Display = course.score10 !== null ? course.score10.toFixed(1) : '—';
-            const resultIcon = course.score10 !== null ? (course.passed 
-                ? `<i class="fas fa-check-circle text-xl text-green-500"></i>` 
-                : `<i class="fas fa-times-circle text-xl text-red-500"></i>`) : '—';
+            
+            // LOGIC MỚI: Icon cảnh báo
+            let resultIcon;
+            if (course.isIncomplete) {
+                resultIcon = `<i class="fas fa-exclamation-triangle text-xl text-yellow-500" title="Chưa nhập đủ điểm thành phần"></i>`;
+            } else if (course.score10 !== null) {
+                resultIcon = course.passed 
+                    ? `<i class="fas fa-check-circle text-xl text-green-500"></i>` 
+                    : `<i class="fas fa-times-circle text-xl text-red-500"></i>`;
+            } else {
+                resultIcon = '—';
+            }
+
             const weightWarning = course.totalWeight !== 100 ? `<i class="fas fa-exclamation-triangle text-yellow-500 ml-2" title="Tổng trọng số khác 100%"></i>` : '';
 
             return `
@@ -578,20 +617,37 @@
             return "Yếu";
         }
 
-        // --- EVENT DELEGATION ---
+        // --- EVENT DELEGATION (CODE MỚI - KHÔNG BỊ NHÁY) ---
         document.body.addEventListener('click', (e) => {
             const target = e.target;
 
+            // 1. SỬA LỖI NHÁY: Thêm Học Kỳ (Dùng appendChild thay vì rerenderAll)
             if (target.closest('#add-semester-btn')) {
-                semestersData.push({ name: `Học kỳ ${semestersData.length + 1}`, courses: [] });
-                rerenderAll();
+                const newIndex = semestersData.length;
+                const newSemester = { name: `Học kỳ ${newIndex + 1}`, courses: [] };
+                semestersData.push(newSemester);
+                
+                // Tạo phần tử HTML mới và gắn vào cuối danh sách
+                const newElement = createSemesterElement(newSemester, newIndex);
+                semestersContainer.appendChild(newElement);
+                
+                // Chỉ cập nhật số liệu, không vẽ lại giao diện
+                updateUI(); 
+                
+                // Tự động cuộn xuống học kỳ vừa tạo
+                newElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
+            
+            // Các chức năng khác giữ nguyên...
+            
+            // Export Excel
             if (target.closest('#export-excel-btn')) {
                 exportToExcel();
                 return;
             }
 
+            // Xóa Học Kỳ (Bắt buộc phải vẽ lại để cập nhật lại index)
             const removeSemesterBtn = target.closest('.remove-semester-btn');
             if(removeSemesterBtn){
                 const idx = parseInt(removeSemesterBtn.dataset.semesterIndex);
@@ -602,14 +658,28 @@
                 return;
             }
 
+            // Thêm Môn (Đã tối ưu: Chèn HTML vào bảng)
             const addCourseBtn = target.closest('.add-course-btn');
             if(addCourseBtn){
                 const sIdx = parseInt(addCourseBtn.dataset.semesterIndex);
+                const cIdx = semestersData[sIdx].courses.length;
+                
+                // Thêm dữ liệu vào mảng
                 semestersData[sIdx].courses.push({ code: "", name: "", credits: 0, score10: null, components: [{ name: "Điểm tổng kết", weight: 100, score: null }], totalWeight: 100 });
-                rerenderAll(); 
+                
+                // Tìm bảng và chèn dòng mới
+                const courseContainer = addCourseBtn.closest('.semester-container').querySelector('.courses-tbody');
+                const emptyMsg = courseContainer.querySelector('.empty-course-msg');
+                if(emptyMsg) emptyMsg.parentElement.remove();
+                
+                const newRowHTML = createCourseRow(semestersData[sIdx].courses[cIdx], sIdx, cIdx);
+                courseContainer.insertAdjacentHTML('beforeend', newRowHTML);
+                
+                updateUI();
                 return;
             }
 
+            // Xóa Môn (Bắt buộc vẽ lại để cập nhật STT)
             const removeCourseBtn = target.closest('.remove-course-btn');
             if(removeCourseBtn){
                 const { semesterIndex, courseIndex } = removeCourseBtn.dataset;
@@ -620,6 +690,7 @@
                 return;
             }
             
+            // Xóa Thành Phần (Bắt buộc vẽ lại để cập nhật index thành phần)
             const removeCompBtn = target.closest('.remove-component-btn');
             if(removeCompBtn){
                  const { semesterIndex, courseIndex, compIndex } = removeCompBtn.dataset;
@@ -633,14 +704,30 @@
                  return;
             }
             
+            // 2. SỬA LỖI NHÁY: Thêm Thành Phần (Dùng insertAdjacentHTML)
             const addCompBtn = target.closest('.add-component-btn');
             if(addCompBtn){
                 const { semesterIndex, courseIndex } = addCompBtn.dataset;
-                semestersData[semesterIndex].courses[courseIndex].components.push({ name: "TP mới", weight: 0, score: null });
-                rerenderAll();
+                const sIdx = parseInt(semesterIndex);
+                const cIdx = parseInt(courseIndex);
+                
+                // Thêm dữ liệu vào mảng
+                semestersData[sIdx].courses[cIdx].components.push({ name: "TP mới", weight: 0, score: null });
+                const newCompIndex = semestersData[sIdx].courses[cIdx].components.length - 1;
+
+                // Tìm vị trí chèn trong bảng
+                const detailsRow = addCompBtn.closest('.details-row');
+                const componentsTbody = detailsRow.querySelector('.components-tbody');
+                
+                // Tạo HTML dòng mới và chèn vào cuối bảng
+                const newRowHTML = createComponentRow(semestersData[sIdx].courses[cIdx].components[newCompIndex], sIdx, cIdx, newCompIndex);
+                componentsTbody.insertAdjacentHTML('beforeend', newRowHTML);
+                
+                updateUI();
                 return;
             }
 
+            // Toggle details (Mở rộng/Thu gọn)
             const toggleBtn = target.closest('.toggle-details-btn');
             if (toggleBtn) {
                 const row = toggleBtn.closest('tr');
@@ -652,6 +739,7 @@
                 return;
             }
 
+            // Nút Import Excel
             const importBtn = target.closest('.import-excel-trigger');
             if(importBtn) {
                 const sIdx = importBtn.dataset.semesterIndex;
@@ -704,4 +792,3 @@
     </script>
 </body>
 </html>
-
