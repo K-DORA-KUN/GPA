@@ -134,8 +134,6 @@
             const savedData = localStorage.getItem('gpaData');
             if (savedData) {
                 semestersData = JSON.parse(savedData);
-                // TỰ ĐỘNG XẾP KHI MỞ LẠI TRANG
-                semestersData.forEach(sem => sortCourses(sem));
             } else {
                 if (semestersData.length === 0) {
                     semestersData.push({ name: "Học kỳ 1", courses: [] });
@@ -162,36 +160,6 @@
             if (score10 >= 4.8) return { score4: 1.5, letter: 'D+', passed: true, color: 'text-yellow-500' };
             if (score10 >= 4.0) return { score4: 1.0, letter: 'D', passed: true, color: 'text-orange-500' };
             return { score4: 0.0, letter: 'F', passed: false, color: 'text-red-500' };
-        }
-
-        // Hàm sắp xếp môn học: Điểm cao -> thấp, Tín chỉ cao -> thấp
-        function sortCourses(semester) {
-            semester.courses.sort((a, b) => {
-                // Coi điểm chưa nhập (null) là -100 để đẩy xuống đáy
-                const scoreA = a.score10 !== null ? a.score10 : -100;
-                const scoreB = b.score10 !== null ? b.score10 : -100;
-
-                // Ưu tiên 1: Điểm cao xếp trên
-                if (scoreB !== scoreA) {
-                    return scoreB - scoreA;
-                }
-                // Ưu tiên 2: Điểm bằng nhau thì Tín chỉ cao xếp trên
-                return b.credits - a.credits;
-            });
-        }
-        
-        // Hàm vẽ lại riêng body của 1 học kỳ (dùng khi auto-sort để không nháy cả trang)
-        function rerenderSemesterBody(semesterIndex) {
-            const semesterDiv = document.querySelector(`[data-semester-container-index="${semesterIndex}"]`);
-            if (!semesterDiv) return;
-            
-            const tbody = semesterDiv.querySelector('.courses-tbody');
-            const courses = semestersData[semesterIndex].courses;
-            
-            // Vẽ lại các dòng
-            tbody.innerHTML = courses.map((course, courseIndex) => 
-                createCourseRow(course, semesterIndex, courseIndex)
-            ).join('');
         }
 
         function calculateAll() {
@@ -376,8 +344,6 @@
                 }
 
                 if (importedCount > 0) {
-
-                    sortCourses(semestersData[semesterIndex]);
                     showModal('Thành công', `Đã nhập ${importedCount} môn. Lưu ý: Nếu file không có cột điểm, bạn cần tự nhập điểm.`, null);
                     rerenderAll();
                 } else {
