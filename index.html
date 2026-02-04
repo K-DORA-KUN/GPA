@@ -71,7 +71,7 @@
     <div class="max-w-7xl mx-auto bg-container-bg rounded-xl shadow-lg p-6 md:p-8 fade-in">
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 via-teal-500 to-sky-500">
-                Bảng Điểm Smart_GPA
+                Bảng Điểm Smart_GPA</span>
             </h1>
             <p class="text-gray-500 mt-2 text-lg">Quản lý, tính toán và dự đoán kết quả học tập</p>
         </header>
@@ -167,11 +167,15 @@
         // Hàm sắp xếp môn học: Điểm cao -> thấp, Tín chỉ cao -> thấp
         function sortCourses(semester) {
             semester.courses.sort((a, b) => {
+                // Coi điểm chưa nhập (null) là -100 để đẩy xuống đáy
                 const scoreA = a.score10 !== null ? a.score10 : -100;
                 const scoreB = b.score10 !== null ? b.score10 : -100;
+
+                // Ưu tiên 1: Điểm cao xếp trên
                 if (scoreB !== scoreA) {
                     return scoreB - scoreA;
                 }
+                // Ưu tiên 2: Điểm bằng nhau thì Tín chỉ cao xếp trên
                 return b.credits - a.credits;
             });
         }
@@ -203,16 +207,18 @@
                 semester.courses.forEach(course => {
                     let totalWeight = 0;
                     let weightedScoreSum = 0;
-                    let hasEmptyScore = false; 
+                    let hasEmptyScore = false; // Cờ đánh dấu chưa nhập xong
 
+                    // Tự tạo component mặc định nếu chưa có
                     if (course.components.length === 0 && course.score10 !== null) {
                          course.components.push({ name: "Điểm tổng kết", weight: 100, score: course.score10 });
                     }
 
                     course.components.forEach(comp => {
                         const weight = parseFloat(comp.weight) || 0;
-                        const scoreStr = comp.score; 
+                        const scoreStr = comp.score; // Lấy giá trị thô để kiểm tra rỗng
                         
+                        // Kiểm tra xem điểm có bị bỏ trống không
                         if (scoreStr === null || scoreStr === "" || isNaN(parseFloat(scoreStr))) {
                             hasEmptyScore = true;
                         }
@@ -225,14 +231,16 @@
                     });
 
                     course.totalWeight = totalWeight;
-                    course.isIncomplete = hasEmptyScore; 
+                    course.isIncomplete = hasEmptyScore; // Lưu trạng thái vào object môn học
                     
                     if (totalWeight > 0) {
                         let rawScore10 = weightedScoreSum / totalWeight;
                         course.score10 = Math.round(rawScore10 * 10) / 10;
                     } else if (course.score10 !== null && !hasEmptyScore) {
+                         // Nếu không có trọng số (nhập thẳng) và đã nhập điểm
                          course.score10 = Math.round(course.score10 * 10) / 10;
                     } else {
+                        // Trường hợp chưa nhập gì cả
                         course.score10 = null;
                     }
                     
@@ -245,6 +253,7 @@
                     const credits = parseFloat(course.credits) || 0;
                     if (credits > 0) {
                         semesterCreditsRegistered += credits;
+                        // Chỉ tính vào tổng kết nếu ĐÃ CÓ ĐIỂM HỆ 10 (tức là đã nhập đủ để tính ra kết quả)
                         if (course.score10 !== null) {
                             totalCreditsRegistered += credits;
                             if (passed) {
@@ -263,10 +272,11 @@
             });
 
             const cumulativeGpa = totalCreditsAccumulated > 0 ? (totalWeightedScore / totalCreditsAccumulated) : 0;
+            
             return { totalCreditsRegistered, totalCreditsAccumulated, cumulativeGpa };
         }
 
-        // --- EXCEL IMPORT LOGIC ---
+        // --- EXCEL IMPORT LOGIC (UPDATED) ---
         function handleImportFile(file, semesterIndex) {
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -281,7 +291,8 @@
                     return;
                 }
 
-                // Dọn dẹp dòng trống
+                // --- BƯỚC 1: DỌN DẸP DÒNG TRỐNG ---
+                // Trước khi import, xóa các dòng rỗng/rác hiện có trong học kỳ để tránh lỗi "dòng đầu trống"
                 const currentCourses = semestersData[semesterIndex].courses;
                 if (currentCourses.length > 0) {
                     semestersData[semesterIndex].courses = currentCourses.filter(c => 
@@ -289,28 +300,37 @@
                     );
                 }
 
+                // --- BƯỚC 2: TÌM DÒNG TIÊU ĐỀ THÔNG MINH ---
                 let headerRowIndex = -1;
                 let colMap = { code: -1, name: -1, credits: -1, score: -1 };
                 
+                // Quét 5 dòng đầu
                 for(let i = 0; i < Math.min(5, jsonData.length); i++) {
                     const row = jsonData[i].map(cell => String(cell).toLowerCase().trim());
+                    
                     row.forEach((cell, idx) => {
                         if(cell.includes('mã') && (cell.includes('môn') || cell.includes('hp') || cell.includes('mh'))) colMap.code = idx;
                         else if(cell.includes('tên') && (cell.includes('môn') || cell.includes('hp') || cell.includes('mh'))) colMap.name = idx;
                         else if(cell.includes('tín') || cell.includes('tc') || cell.includes('dvht')) colMap.credits = idx;
                         else if(cell.includes('điểm') && (cell.includes('10') || cell.includes('tổng') || cell.includes('tk') || cell === 'điểm')) colMap.score = idx;
                     });
+
+                    // Chỉ cần tìm thấy Tên và Tín chỉ là chốt
                     if(colMap.name !== -1 && colMap.credits !== -1) {
                         headerRowIndex = i;
                         break;
                     }
                 }
 
+                // --- BƯỚC 3: XỬ LÝ NẾU KHÔNG TÌM THẤY TIÊU ĐỀ (FALLBACK) ---
                 if (headerRowIndex === -1) {
+                    // Giả định file có STT ở đầu: STT(0), Mã(1), Tên(2), TC(3) -> Khớp với file của bạn
                     colMap = { code: 1, name: 2, credits: 3, score: 4 };
+                    // Nếu cột 0 là Mã môn thì dịch chuyển lại
                     const firstRow = jsonData[0] || [];
                     const firstCell = String(firstRow[0]).trim().toUpperCase();
                     if (firstCell.startsWith('IT') || firstCell.startsWith('MA') || firstCell.length > 4) {
+                         // File không có STT, bắt đầu luôn bằng Mã
                          colMap = { code: 0, name: 1, credits: 2, score: 3 };
                     }
                     headerRowIndex = -1; 
@@ -323,14 +343,17 @@
 
                     const name = colMap.name !== -1 ? row[colMap.name] : '';
                     if (!name) continue; 
+
                     const code = colMap.code !== -1 ? (row[colMap.code] || '') : '';
                     let credits = colMap.credits !== -1 ? parseInt(row[colMap.credits]) : 0;
-                    if (isNaN(credits)) credits = 0; 
+                    if (isNaN(credits)) credits = 0; // Fix lỗi NaN
 
                     let score = null;
                     if (colMap.score !== -1 && row[colMap.score] != null && String(row[colMap.score]).trim() !== '') {
                         score = parseFloat(row[colMap.score]);
                     }
+
+                    // Bỏ qua dòng tiêu đề nếu bị lọt vào (trường hợp fallback)
                     if (String(name).toLowerCase().includes('tên môn')) continue;
 
                     const newCourse = {
@@ -353,9 +376,9 @@
                 }
 
                 if (importedCount > 0) {
-                    // TỰ ĐỘNG SẮP XẾP SAU KHI IMPORT
+
                     sortCourses(semestersData[semesterIndex]);
-                    showModal('Thành công', `Đã nhập ${importedCount} môn. Danh sách đã được tự động sắp xếp điểm cao nhất lên đầu.`, null);
+                    showModal('Thành công', `Đã nhập ${importedCount} môn. Lưu ý: Nếu file không có cột điểm, bạn cần tự nhập điểm.`, null);
                     rerenderAll();
                 } else {
                     showModal('Thất bại', 'Không đọc được dữ liệu. Vui lòng kiểm tra file.', null);
@@ -396,6 +419,7 @@
                          if(mainRow){
                             const score10Display = course.score10 !== null ? course.score10.toFixed(1) : '—';
                             
+                            // LOGIC MỚI: Icon cảnh báo
                             let resultIcon;
                             if (course.isIncomplete) {
                                 resultIcon = `<i class="fas fa-exclamation-triangle text-xl text-yellow-500" title="Chưa nhập đủ điểm thành phần"></i>`;
@@ -415,6 +439,7 @@
                             const codeInput = mainRow.querySelector('[data-field="code"]');
                             if(codeInput && codeInput.value !== course.code) codeInput.value = course.code;
 
+                            // Cập nhật cảnh báo trọng số
                             const detailsRow = mainRow.nextElementSibling;
                             if(detailsRow && detailsRow.classList.contains('details-row')){
                                  const weightWarning = course.totalWeight !== 100 ? `<i class="fas fa-exclamation-triangle text-yellow-500 ml-2" title="Tổng trọng số khác 100%"></i>` : '';
@@ -476,6 +501,8 @@
 
         function createCourseRow(course, semesterIndex, courseIndex) {
             const score10Display = course.score10 !== null ? course.score10.toFixed(1) : '—';
+            
+            // LOGIC MỚI: Icon cảnh báo
             let resultIcon;
             if (course.isIncomplete) {
                 resultIcon = `<i class="fas fa-exclamation-triangle text-xl text-yellow-500" title="Chưa nhập đủ điểm thành phần"></i>`;
@@ -486,6 +513,7 @@
             } else {
                 resultIcon = '—';
             }
+
             const weightWarning = course.totalWeight !== 100 ? `<i class="fas fa-exclamation-triangle text-yellow-500 ml-2" title="Tổng trọng số khác 100%"></i>` : '';
 
             return `
@@ -615,28 +643,50 @@
             XLSX.writeFile(workbook, `BangDiem_${date.replace(/\//g,'-')}.xlsx`);
         }
         
-        // --- EVENT DELEGATION ---
+        function getGradeClassification(gpa) {
+            if (gpa >= 3.6) return "Xuất sắc";
+            if (gpa >= 3.2) return "Giỏi";
+            if (gpa >= 2.5) return "Khá";
+            if (gpa >= 2.0) return "Trung bình";
+            return "Yếu";
+        }
+
+        // --- EVENT DELEGATION (CODE MỚI - KHÔNG BỊ NHÁY) ---
         document.body.addEventListener('click', (e) => {
             const target = e.target;
 
+            // 1. SỬA LỖI NHÁY: Thêm Học Kỳ (Dùng appendChild thay vì rerenderAll)
             if (target.closest('#add-semester-btn')) {
                 const newIndex = semestersData.length;
                 const newSemester = { name: `Học kỳ ${newIndex + 1}`, courses: [] };
                 semestersData.push(newSemester);
                 
+                // --- DÒNG QUAN TRỌNG CẦN THÊM ---
+                // Phải tính toán ngay để học kỳ mới có GPA = 0, Tín chỉ = 0
                 calculateAll(); 
+                // -------------------------------
+
+                // Tạo phần tử HTML mới và gắn vào cuối danh sách
                 const newElement = createSemesterElement(newSemester, newIndex);
                 semestersContainer.appendChild(newElement);
+                
+                // Cập nhật lại thanh tổng kết phía dưới cùng
                 updateUI(); 
+                
+                // Tự động cuộn xuống học kỳ vừa tạo
                 newElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
             
+            // Các chức năng khác giữ nguyên...
+            
+            // Export Excel
             if (target.closest('#export-excel-btn')) {
                 exportToExcel();
                 return;
             }
 
+            // Xóa Học Kỳ (Bắt buộc phải vẽ lại để cập nhật lại index)
             const removeSemesterBtn = target.closest('.remove-semester-btn');
             if(removeSemesterBtn){
                 const idx = parseInt(removeSemesterBtn.dataset.semesterIndex);
@@ -647,20 +697,28 @@
                 return;
             }
 
+            // Thêm Môn (Đã tối ưu: Chèn HTML vào bảng)
             const addCourseBtn = target.closest('.add-course-btn');
             if(addCourseBtn){
                 const sIdx = parseInt(addCourseBtn.dataset.semesterIndex);
                 const cIdx = semestersData[sIdx].courses.length;
+                
+                // Thêm dữ liệu vào mảng
                 semestersData[sIdx].courses.push({ code: "", name: "", credits: 0, score10: null, components: [{ name: "Điểm tổng kết", weight: 100, score: null }], totalWeight: 100 });
+                
+                // Tìm bảng và chèn dòng mới
                 const courseContainer = addCourseBtn.closest('.semester-container').querySelector('.courses-tbody');
                 const emptyMsg = courseContainer.querySelector('.empty-course-msg');
                 if(emptyMsg) emptyMsg.parentElement.remove();
+                
                 const newRowHTML = createCourseRow(semestersData[sIdx].courses[cIdx], sIdx, cIdx);
                 courseContainer.insertAdjacentHTML('beforeend', newRowHTML);
+                
                 updateUI();
                 return;
             }
 
+            // Xóa Môn (Bắt buộc vẽ lại để cập nhật STT)
             const removeCourseBtn = target.closest('.remove-course-btn');
             if(removeCourseBtn){
                 const { semesterIndex, courseIndex } = removeCourseBtn.dataset;
@@ -671,6 +729,7 @@
                 return;
             }
             
+            // Xóa Thành Phần (Bắt buộc vẽ lại để cập nhật index thành phần)
             const removeCompBtn = target.closest('.remove-component-btn');
             if(removeCompBtn){
                  const { semesterIndex, courseIndex, compIndex } = removeCompBtn.dataset;
@@ -684,21 +743,30 @@
                  return;
             }
             
+            // 2. SỬA LỖI NHÁY: Thêm Thành Phần (Dùng insertAdjacentHTML)
             const addCompBtn = target.closest('.add-component-btn');
             if(addCompBtn){
                 const { semesterIndex, courseIndex } = addCompBtn.dataset;
                 const sIdx = parseInt(semesterIndex);
                 const cIdx = parseInt(courseIndex);
+                
+                // Thêm dữ liệu vào mảng
                 semestersData[sIdx].courses[cIdx].components.push({ name: "TP mới", weight: 0, score: null });
                 const newCompIndex = semestersData[sIdx].courses[cIdx].components.length - 1;
+
+                // Tìm vị trí chèn trong bảng
                 const detailsRow = addCompBtn.closest('.details-row');
                 const componentsTbody = detailsRow.querySelector('.components-tbody');
+                
+                // Tạo HTML dòng mới và chèn vào cuối bảng
                 const newRowHTML = createComponentRow(semestersData[sIdx].courses[cIdx].components[newCompIndex], sIdx, cIdx, newCompIndex);
                 componentsTbody.insertAdjacentHTML('beforeend', newRowHTML);
+                
                 updateUI();
                 return;
             }
 
+            // Toggle details (Mở rộng/Thu gọn)
             const toggleBtn = target.closest('.toggle-details-btn');
             if (toggleBtn) {
                 const row = toggleBtn.closest('tr');
@@ -710,6 +778,7 @@
                 return;
             }
 
+            // Nút Import Excel
             const importBtn = target.closest('.import-excel-trigger');
             if(importBtn) {
                 const sIdx = importBtn.dataset.semesterIndex;
@@ -718,36 +787,7 @@
             }
         });
 
-        // --- EVENT: CHANGE INPUT (FOR AUTO SORT) ---
-        // Sự kiện này kích hoạt khi bạn nhập xong và nhấn Enter hoặc click ra ngoài
-        document.body.addEventListener('change', (e) => {
-            const target = e.target;
-            
-            // Chỉ bắt sự kiện khi sửa các ô liên quan đến Điểm hoặc Tín chỉ
-            if (target.classList.contains('course-data-input') || target.classList.contains('comp-data-input')) {
-                const field = target.dataset.field;
-                
-                // Nếu sửa Tên hoặc Mã môn thì không cần sắp xếp lại
-                if (field === 'name' || field === 'code') return;
-
-                const semesterIndex = parseInt(target.dataset.semesterIndex);
-                
-                // 1. Tính toán lại toàn bộ để có điểm số mới nhất
-                calculateAll();
-                
-                // 2. Sắp xếp lại danh sách môn trong học kỳ đó
-                sortCourses(semestersData[semesterIndex]);
-                
-                // 3. Vẽ lại giao diện học kỳ đó theo thứ tự mới
-                rerenderSemesterBody(semesterIndex);
-                
-                // 4. Cập nhật màu sắc, tổng kết
-                updateUI();
-            }
-        });
-
-        // --- EVENT: INPUT (FOR REAL-TIME DATA UPDATE) ---
-        // Sự kiện này kích hoạt ngay khi bạn gõ phím
+        // --- EVENT: CHANGE INPUT ---
         document.body.addEventListener('input', (e) => {
             const target = e.target;
             const { semesterIndex, courseIndex, compIndex, field } = target.dataset;
@@ -766,7 +806,7 @@
                      const isNum = target.type === 'number';
                      semestersData[semesterIndex].courses[courseIndex].components[compIndex][field] = isNum ? parseFloat(val) : val;
                  }
-                 updateUI(); // Cập nhật tính toán nhưng KHÔNG sắp xếp ở đây (để tránh nhảy dòng khi đang gõ)
+                 updateUI(); 
             }
         });
 
